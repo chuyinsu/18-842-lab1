@@ -317,8 +317,7 @@ public class MessagePasser {
 						clientSocket = NetTool.createSocket(contact.IP,
 								contact.port, logger);
 						if (clientSocket == null) {
-							logger.error("problem in creating socket when sending message - "
-									+ message.toString());
+							logger.error("problem in creating socket when sending message");
 							continue;
 						}
 						socketMap.put(dest, clientSocket);
