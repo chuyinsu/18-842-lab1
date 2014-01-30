@@ -4,8 +4,8 @@ import java.io.Serializable;
 
 /**
  * 
- * This class will hold data and all necessary information that needs to be
- * transmitted to the destination.
+ * This class holds all necessary information that needs to be transmitted to
+ * the destination.
  * 
  * @author Ravi Chandra
  * @author Yinsu Chu
@@ -26,10 +26,6 @@ public class Message implements Serializable {
 		this.data = data;
 	}
 
-	/**
-	 * Overriding toString for printing message with all necessary information
-	 * onto console.
-	 */
 	@Override
 	public String toString() {
 		return "[src] " + source + " [dst] " + dest + " [kind] " + kind
@@ -84,4 +80,5 @@ public class Message implements Serializable {
 	public void setDupe(boolean dupe) {
 		this.dupe = dupe;
 	}
+
 }

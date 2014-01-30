@@ -20,8 +20,6 @@ import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 /**
@@ -55,7 +53,7 @@ public class MessagePasser {
 	private String configurationFileName;
 	private String localName;
 
-	private Logger logger;
+	private LogTool logger;
 
 	private LinkedBlockingQueue<Message> sendBuffer;
 	private LinkedBlockingQueue<Message> receiveBuffer;
@@ -63,8 +61,7 @@ public class MessagePasser {
 	// maps from remote node names to sockets
 	private HashMap<String, Socket> socketMap;
 
-	// maps from remote node names to sequence numbers
-	private HashMap<String, Integer> seqNumMap;
+	private int seqNum;
 
 	// maps from remote node names to their contact information (IP and port)
 	private HashMap<String, Contact> contactMap;
@@ -288,7 +285,6 @@ public class MessagePasser {
 				Integer port = (Integer) map.get(CONTACT_PORT);
 				Contact contact = new Contact(IP, (int) port);
 				contactMap.put(name, contact);
-				seqNumMap.put(name, 0);
 			}
 		}
 	}
@@ -341,12 +337,8 @@ public class MessagePasser {
 						clientSocket = socketMap.get(dest);
 					}
 
-					int seqNum = seqNumMap.get(dest);
-					seqNum = seqNum + 1;
-					seqNumMap.put(dest, seqNum);
-
 					message.setSource(new String(localName));
-					message.setSequenceNumber(seqNum);
+					message.setSequenceNumber(seqNum++);
 					message.setDupe(false);
 
 					// match rules before sending
@@ -674,11 +666,11 @@ public class MessagePasser {
 	public MessagePasser(String configurationFileName, String localName) {
 		this.configurationFileName = configurationFileName;
 		this.localName = localName;
-		this.logger = LoggerFactory.getLogger(MessagePasser.class);
+		this.logger = new LogTool("ipc.log", MessagePasser.class.getName());
 		this.sendBuffer = new LinkedBlockingQueue<Message>();
 		this.receiveBuffer = new LinkedBlockingQueue<Message>();
 		this.socketMap = new HashMap<String, Socket>();
-		this.seqNumMap = new HashMap<String, Integer>();
+		this.seqNum = 1;
 		this.contactMap = new HashMap<String, Contact>();
 		this.rulesLock = new ReentrantLock();
 		this.watcher = new Watcher();

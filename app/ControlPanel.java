@@ -1,9 +1,9 @@
 package app;
 
-import java.util.Scanner;
+import ipc.Message;
+import ipc.MessagePasser;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Scanner;
 
 /**
  * 
@@ -15,13 +15,14 @@ import org.slf4j.LoggerFactory;
  * 
  */
 public class ControlPanel {
+	private static final int NUM_CMD_ARG = 2;
+	private static final String USAGE = "dummy";
 	private static final String HELP_CMD = "help";
 	private static final String HELP_CONTENT = "send <process_name> <kind> <message>";
 	private static final String SEND_CMD = "send";
 	private static final int SEND_NUM_PARAM = 4;
 	private static final String QUIT_CMD = "quit";
 
-	private Logger logger;
 	private MessagePasser messagePasser;
 
 	private Receiver receiver;
@@ -29,8 +30,8 @@ public class ControlPanel {
 
 	/**
 	 * 
-	 * This class is used by ControlPanel to go through receive buffer and will
-	 * print received messages onto console.
+	 * This class is used by ControlPanel to go through receive buffer and
+	 * prints received messages to console.
 	 * 
 	 * @author Ravi Chandra
 	 * @author Yinsu Chu
@@ -38,12 +39,9 @@ public class ControlPanel {
 	 */
 	private class Receiver implements Runnable {
 		public void run() {
-			logger.info("receiver thread started");
 			while (true) {
 				Message message = messagePasser.receive();
-				String display = "message received - " + message.toString();
-				System.out.println(display);
-				logger.info(display);
+				System.out.println("message received - " + message.toString());
 			}
 		}
 	}
@@ -61,10 +59,7 @@ public class ControlPanel {
 	 */
 	public void startUserInterface(String configurationFileName,
 			String localName) {
-		logger = LoggerFactory.getLogger(ControlPanel.class);
-		logger.info("user interface started");
 		messagePasser = new MessagePasser(configurationFileName, localName);
-		logger.info("starting receiver thread...");
 
 		// initializing Receiver class and starting thread
 		receiver = new Receiver();
@@ -76,7 +71,6 @@ public class ControlPanel {
 		while (true) {
 			System.out.print("DS-Lab0>> ");
 			String cmd = scanner.nextLine();
-			logger.info("user command - " + cmd);
 			if (cmd.equals(HELP_CMD)) {
 				System.out.println(HELP_CONTENT);
 			} else if (cmd.startsWith(SEND_CMD)) {
@@ -87,20 +81,25 @@ public class ControlPanel {
 							parsedLine[3]);
 					messagePasser.send(message);
 				} else {
-					String display = "invalid command format";
-					System.out.println(display);
-					logger.error(display);
+					System.out.println("invalid command");
 				}
 			} else if (cmd.equals(QUIT_CMD)) {
-				logger.info("terminating program...");
 				scanner.close();
 				System.exit(-1);
 			}
 			if (!receiverThread.isAlive()) {
-				String display = "ControlPanel health check: receiver thread died";
-				System.out.println(display);
-				logger.error(display);
+				System.out
+						.println("ControlPanel health check: receiver thread died");
 			}
 		}
+	}
+
+	public static void main(String[] args) {
+		if (args.length != NUM_CMD_ARG) {
+			System.out.println(USAGE);
+			System.exit(-1);
+		}
+		ControlPanel cp = new ControlPanel();
+		cp.startUserInterface(args[0], args[1]);
 	}
 }

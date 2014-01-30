@@ -4,11 +4,9 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import org.slf4j.Logger;
-
 /**
  * Helper methods to create and destroy sockets and server sockets. They are
- * from Yinsu Chu and Ming Zhong's project of 15-440/640 in Fall 2013.
+ * modified from Yinsu Chu and Ming Zhong's project of 15-440/640 in Fall 2013.
  * 
  * @author Ming Zhong
  * @author Yinsu Chu
@@ -28,7 +26,7 @@ public class NetTool {
 	 * @return A new server socket, null on failure.
 	 */
 	public static ServerSocket createServerSocket(String IP, int port,
-			Logger logger) {
+			LogTool logger) {
 		ServerSocket socket = null;
 		InetSocketAddress address = new InetSocketAddress(IP, port);
 		try {
@@ -61,7 +59,7 @@ public class NetTool {
 	 *            Logger of the calling method.
 	 * @return The socket to the remote host, null on failure.
 	 */
-	public static Socket createSocket(String IP, int port, Logger logger) {
+	public static Socket createSocket(String IP, int port, LogTool logger) {
 		Socket socket = null;
 		try {
 			socket = new Socket(IP, port);
@@ -89,7 +87,7 @@ public class NetTool {
 	 * @param logger
 	 *            Logger of the calling method.
 	 */
-	public static void destroyServerSocket(ServerSocket socket, Logger logger) {
+	public static void destroyServerSocket(ServerSocket socket, LogTool logger) {
 		if (socket == null) {
 			return;
 		}
@@ -108,7 +106,7 @@ public class NetTool {
 	 * @param logger
 	 *            Logger of the calling method.
 	 */
-	public static void destroySocket(Socket socket, Logger logger) {
+	public static void destroySocket(Socket socket, LogTool logger) {
 		if (socket == null) {
 			return;
 		}
