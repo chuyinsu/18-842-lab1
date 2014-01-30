@@ -4,6 +4,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 
+/**
+ * This class is used by the communication infrastructure internally, logging
+ * local events to facilitate debugging.
+ * 
+ * @author Jason Xi
+ * @author Yinsu Chu
+ * 
+ */
 public class LogTool {
 	private String className;
 	private PrintWriter output;

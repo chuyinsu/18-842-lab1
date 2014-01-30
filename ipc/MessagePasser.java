@@ -27,7 +27,7 @@ import org.yaml.snakeyaml.Yaml;
  * socket to the remote end when sending messages. The receiving thread will
  * keep running and socket created for sending will be saved for later use.
  * 
- * @author Ravi Chandra
+ * @author Jason Xi
  * @author Yinsu Chu
  * 
  */
@@ -61,6 +61,7 @@ public class MessagePasser {
 	// maps from remote node names to sockets
 	private HashMap<String, Socket> socketMap;
 
+	// a global sequence number
 	private int seqNum;
 
 	// maps from remote node names to their contact information (IP and port)
@@ -83,7 +84,7 @@ public class MessagePasser {
 	/**
 	 * A private class to store remote node information.
 	 * 
-	 * @author Ravi Chandra
+	 * @author Jason Xi
 	 * @author Yinsu Chu
 	 * 
 	 */
@@ -101,7 +102,7 @@ public class MessagePasser {
 	 * This thread keeps watching for configuration updates and checking the
 	 * health of sender and receiver threads.
 	 * 
-	 * @author Ravi Chandra
+	 * @author Jason Xi
 	 * @author Yinsu Chu
 	 * 
 	 */
@@ -134,14 +135,10 @@ public class MessagePasser {
 					updateRules();
 				}
 				if (!senderThread.isAlive()) {
-					String display = "MessagePasser health check: sender thread died";
-					System.out.println(display);
-					logger.error(display);
+					logger.error("health check: sender thread died");
 				}
 				if (!receiverThread.isAlive()) {
-					String display = "MessagePasser health check: receiver thread died";
-					System.out.println(display);
-					logger.error(display);
+					logger.error("health check: receiver thread died");
 				}
 			}
 		}
@@ -180,16 +177,12 @@ public class MessagePasser {
 					ETag = connection.getHeaderField("ETag");
 					configChanged = true;
 				} else if (responseCode != HttpURLConnection.HTTP_NOT_MODIFIED) {
-					String display = "unexpected HTTP responce code - "
-							+ responseCode + ", failed to download config file";
-					System.out.println(display);
-					logger.error(display);
+					logger.error("unexpected HTTP responce code - "
+							+ responseCode + ", failed to download config file");
 				}
 			} catch (Exception ex) {
-				String display = "failed to download config file - "
-						+ ex.getMessage();
-				System.out.println(display);
-				logger.error(display);
+				logger.error("failed to download config file - "
+						+ ex.getMessage());
 			} finally {
 				if (bos != null) {
 					try {
@@ -292,7 +285,7 @@ public class MessagePasser {
 	/**
 	 * This thread keeps taking messages from the send buffer and send them.
 	 * 
-	 * @author Ravi Chandra
+	 * @author Jason Xi
 	 * @author Yinsu Chu
 	 * 
 	 */
@@ -313,10 +306,8 @@ public class MessagePasser {
 
 					// cannot send if receiver does not exist
 					if (!contactMap.containsKey(dest)) {
-						String display = "process with name " + dest
-								+ " dose not exist";
-						System.out.println(display);
-						logger.error(display);
+						logger.error("process with name " + dest
+								+ " dose not exist");
 						continue;
 					}
 
@@ -326,10 +317,8 @@ public class MessagePasser {
 						clientSocket = NetTool.createSocket(contact.IP,
 								contact.port, logger);
 						if (clientSocket == null) {
-							String display = "problem in creating socket when sending message - "
-									+ message.toString();
-							System.out.println(display);
-							logger.error(display);
+							logger.error("problem in creating socket when sending message - "
+									+ message.toString());
 							continue;
 						}
 						socketMap.put(dest, clientSocket);
@@ -337,7 +326,7 @@ public class MessagePasser {
 						clientSocket = socketMap.get(dest);
 					}
 
-					message.setSource(new String(localName));
+					message.setSource(localName);
 					message.setSequenceNumber(seqNum++);
 					message.setDupe(false);
 
@@ -345,11 +334,11 @@ public class MessagePasser {
 					String action = checkRules(message, sendRules);
 					if (action == null) {
 						if (!sendMessage(clientSocket, message)) {
-							String display = "failed to send message - "
-									+ message.toString();
-							System.out.println(display);
-							logger.error(display);
+							logger.error("failed to send message - "
+									+ message.toString());
 							socketMap.remove(dest);
+						} else {
+							logger.info("message sent - " + message.toString());
 						}
 						clearDelayBuffer(clientSocket);
 					} else if (action.equals(ACTION_DROP)) {
@@ -371,24 +360,24 @@ public class MessagePasser {
 						dup.setSequenceNumber(message.getSequenceNumber());
 						dup.setDupe(true);
 						if (!sendMessage(clientSocket, message)) {
-							String display = "failed to send message - "
-									+ message.toString();
-							System.out.println(display);
-							logger.error(display);
+							logger.error("failed to send message - "
+									+ message.toString());
 							socketMap.remove(dest);
+						} else {
+							logger.info("message sent - " + message.toString());
 						}
 						if (!sendMessage(clientSocket, dup)) {
-							String display = "failed to send message - "
-									+ message.toString();
-							System.out.println(display);
-							logger.error(display);
+							logger.error("failed to send message - "
+									+ message.toString());
 							socketMap.remove(dest);
+						} else {
+							logger.info("message sent - " + message.toString());
 						}
 						clearDelayBuffer(clientSocket);
 					}
-				} catch (InterruptedException e) {
+				} catch (InterruptedException ex) {
 					logger.error("interrupted when sending message: "
-							+ e.getMessage());
+							+ ex.getMessage());
 				}
 			}
 		}
@@ -407,6 +396,8 @@ public class MessagePasser {
 						logger.error("failed to send message - "
 								+ message.toString());
 						socketMap.remove(message.getDest());
+					} else {
+						logger.info("message sent - " + message.toString());
 					}
 				} catch (InterruptedException e) {
 					logger.error("interrutped when clearing delay buffer: "
@@ -470,7 +461,7 @@ public class MessagePasser {
 	 * This thread listens on the local server socket and spanws a worker thread
 	 * if a remote node tries to send messages.
 	 * 
-	 * @author Ravi Chandra
+	 * @author Jason Xi
 	 * @author Yinsu Chu
 	 * 
 	 */
@@ -488,7 +479,7 @@ public class MessagePasser {
 		 * local node. Once created, it will continue to run to receive any
 		 * future messages.
 		 * 
-		 * @author Ravi Chandra
+		 * @author Jason Xi
 		 * @author Yinsu Chu
 		 * 
 		 */
@@ -514,6 +505,8 @@ public class MessagePasser {
 						logger.error("failed to receive message from socket");
 						NetTool.destroySocket(clientSocket, logger);
 						return;
+					} else {
+						logger.info("message received - " + message.toString());
 					}
 
 					String action = checkRules(message, receiveRules);
@@ -625,10 +618,8 @@ public class MessagePasser {
 
 			// cannot listen if local name does not exist in configuration file
 			if (!contactMap.containsKey(localName)) {
-				String display = "local name " + localName
-						+ " does not exist in the config file";
-				System.out.println(display);
-				logger.error(display);
+				logger.error("local name " + localName
+						+ " does not exist in the config file");
 				return;
 			}
 
@@ -638,10 +629,8 @@ public class MessagePasser {
 
 			// failure on creating server socket is a fatal error
 			if (serverSocket == null) {
-				String display = "cannot create server socket on " + self.IP
-						+ ":" + self.port;
-				System.out.println(display);
-				logger.error(display);
+				logger.error("cannot create server socket on " + self.IP + ":"
+						+ self.port);
 				return;
 			}
 

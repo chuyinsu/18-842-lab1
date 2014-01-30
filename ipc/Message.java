@@ -7,7 +7,7 @@ import java.io.Serializable;
  * This class holds all necessary information that needs to be transmitted to
  * the destination.
  * 
- * @author Ravi Chandra
+ * @author Jason Xi
  * @author Yinsu Chu
  * 
  */

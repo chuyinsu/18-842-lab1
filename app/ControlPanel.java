@@ -6,17 +6,17 @@ import ipc.MessagePasser;
 import java.util.Scanner;
 
 /**
+ * This class demonstrates the communication infrastructure with MessagePasser
+ * by providing an interactive command-line user interface.
  * 
- * This class will accept command line arguments, will initialize MessagePasser
- * class and will accept send command arguments from input console.
- * 
- * @author Ravi Chandra
+ * @author Jason Xi
  * @author Yinsu Chu
  * 
  */
 public class ControlPanel {
 	private static final int NUM_CMD_ARG = 2;
-	private static final String USAGE = "dummy";
+	private static final String USAGE = "usage: java -cp :snakeyaml-1.11.jar app/ControlPanel <configuration_file_name> <local_name>";
+
 	private static final String HELP_CMD = "help";
 	private static final String HELP_CONTENT = "send <process_name> <kind> <message>";
 	private static final String SEND_CMD = "send";
@@ -29,11 +29,10 @@ public class ControlPanel {
 	private Thread receiverThread;
 
 	/**
+	 * This class is used by ControlPanel to wait on receive buffer for the next
+	 * message and prints delivered messages to console.
 	 * 
-	 * This class is used by ControlPanel to go through receive buffer and
-	 * prints received messages to console.
-	 * 
-	 * @author Ravi Chandra
+	 * @author Jason Xi
 	 * @author Yinsu Chu
 	 * 
 	 */
@@ -41,15 +40,14 @@ public class ControlPanel {
 		public void run() {
 			while (true) {
 				Message message = messagePasser.receive();
-				System.out.println("message received - " + message.toString());
+				System.out.println("message delivered - " + message.toString());
 			}
 		}
 	}
 
 	/**
-	 * 
-	 * This method will accept commands from input console, will do sanity
-	 * checks and will construct message.
+	 * This method launches a simple command-line user interface to operate on
+	 * the communication infrastructure.
 	 * 
 	 * @param configurationFileName
 	 *            Name of file which is uploaded in Dropbox.
@@ -61,15 +59,13 @@ public class ControlPanel {
 			String localName) {
 		messagePasser = new MessagePasser(configurationFileName, localName);
 
-		// initializing Receiver class and starting thread
 		receiver = new Receiver();
 		receiverThread = new Thread(receiver);
 		receiverThread.start();
 
-		// accepting commands from input console
 		Scanner scanner = new Scanner(System.in);
 		while (true) {
-			System.out.print("DS-Lab0>> ");
+			System.out.print("DS_Lab1>> ");
 			String cmd = scanner.nextLine();
 			if (cmd.equals(HELP_CMD)) {
 				System.out.println(HELP_CONTENT);
