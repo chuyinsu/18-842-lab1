@@ -24,6 +24,7 @@ public class ControlPanel {
 	private static final String HELP_CONTENT = "send <process_name> <kind> <message>";
 	private static final String SEND_CMD = "send";
 	private static final String EVENT_CMD = "event";
+	private static final String TIME_CMD = "time";
 	private static final int SEND_NUM_PARAM = 4;
 	private static final String QUIT_CMD = "quit";
 
@@ -100,6 +101,9 @@ public class ControlPanel {
 			} else if (cmd.equals(EVENT_CMD)) {
 				TimeStamp ts = ClockService.getInstance().updateLocalTime();
 				System.out.println("local time updated to: " + ts.toString());
+			} else if (cmd.equals(TIME_CMD)) {
+				TimeStamp ts = ClockService.getInstance().getLocalTime();
+				System.out.println("local time: " + ts.toString());
 			} else if (cmd.equals(QUIT_CMD)) {
 				scanner.close();
 				System.exit(-1);
