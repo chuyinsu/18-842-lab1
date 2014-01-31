@@ -553,7 +553,7 @@ public class MessagePasser {
 			public void run() {
 				logger.info("receiver worker for "
 						+ clientSocket.getRemoteSocketAddress().toString()
-						+ "started");
+						+ " started");
 				while (true) {
 					Message message = receiveMessage(clientSocket);
 

@@ -12,6 +12,13 @@ import java.util.Arrays;
  * 
  */
 public class TimeStamp implements Serializable {
+
+	// DEFAULT - cannot determine the relationship
+	// e.g. when the clock service type is invalid
+	public enum RelationShip {
+		BEFORE, AFTER, CONCURRENT, SAME, DEFAULT
+	}
+
 	private static final long serialVersionUID = -7491707524322400477L;
 
 	private ClockService.ClockType type;
@@ -97,5 +104,45 @@ public class TimeStamp implements Serializable {
 
 	protected void setVector(int[] vector) {
 		this.vector = vector;
+	}
+
+	/**
+	 * Compare two time stamps, applicable to both Logical and Vector class.
+	 * 
+	 * @param ts
+	 *            The time stamp to compare to.
+	 * @return The comparison result.
+	 */
+	public RelationShip compare(TimeStamp ts) {
+		if (type == ClockService.ClockType.LOGICAL) {
+			if (this.logical < ts.logical) {
+				return RelationShip.BEFORE;
+			} else if (this.logical > ts.logical) {
+				return RelationShip.AFTER;
+			} else {
+				return RelationShip.CONCURRENT;
+			}
+		} else if (type == ClockService.ClockType.VECTOR) {
+			boolean biggerThan = false;
+			boolean smallerThan = false;
+			for (int i = 0; i < this.vector.length; i++) {
+				if ((this.vector)[i] > (ts.vector)[i]) {
+					biggerThan = true;
+				} else if ((this.vector)[i] < (ts.vector)[i]) {
+					smallerThan = true;
+				}
+			}
+			if (biggerThan && (!smallerThan)) {
+				return RelationShip.AFTER;
+			} else if ((!biggerThan) && smallerThan) {
+				return RelationShip.BEFORE;
+			} else if ((!biggerThan) && (!smallerThan)) {
+				return RelationShip.SAME;
+			} else {
+				return RelationShip.CONCURRENT;
+			}
+		} else {
+			return RelationShip.DEFAULT;
+		}
 	}
 }
