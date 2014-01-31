@@ -11,7 +11,7 @@ import java.util.Arrays;
  * @author Yinsu Chu
  * 
  */
-public class TimeStamp implements Serializable {
+public class TimeStamp implements Serializable, Comparable<TimeStamp> {
 
 	// DEFAULT - cannot determine the relationship
 	// e.g. when the clock service type is invalid
@@ -143,6 +143,32 @@ public class TimeStamp implements Serializable {
 			}
 		} else {
 			return RelationShip.DEFAULT;
+		}
+	}
+
+	@Override
+	public int compareTo(TimeStamp ts) {
+		if (type == ClockService.ClockType.LOGICAL) {
+			return this.logical - ts.logical;
+		} else if (type == ClockService.ClockType.VECTOR) {
+			boolean biggerThan = false;
+			boolean smallerThan = false;
+			for (int i = 0; i < this.vector.length; i++) {
+				if ((this.vector)[i] > (ts.vector)[i]) {
+					biggerThan = true;
+				} else if ((this.vector)[i] < (ts.vector)[i]) {
+					smallerThan = true;
+				}
+			}
+			if (biggerThan && (!smallerThan)) {
+				return 1;
+			} else if ((!biggerThan) && smallerThan) {
+				return -1;
+			} else {
+				return 0;
+			}
+		} else {
+			return 0;
 		}
 	}
 }

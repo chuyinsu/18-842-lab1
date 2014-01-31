@@ -2,7 +2,8 @@ package ipc;
 
 import clock.TimeStamp;
 
-public class TimeStampedMessage extends Message {
+public class TimeStampedMessage extends Message implements
+		Comparable<TimeStampedMessage> {
 	private static final long serialVersionUID = -5908777442179653889L;
 	private TimeStamp timeStamp;
 
@@ -25,5 +26,10 @@ public class TimeStampedMessage extends Message {
 				+ getKind() + " [seq] " + getSequenceNumber() + " [dup] "
 				+ (isDupe() ? "true" : "false") + " [time] "
 				+ timeStamp.toString() + " [data] " + getData().toString();
+	}
+
+	@Override
+	public int compareTo(TimeStampedMessage tsm) {
+		return this.timeStamp.compareTo(tsm.timeStamp);
 	}
 }
