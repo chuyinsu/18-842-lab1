@@ -1,5 +1,6 @@
 package clock;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -10,7 +11,9 @@ import java.util.Arrays;
  * @author Yinsu Chu
  * 
  */
-public class TimeStamp {
+public class TimeStamp implements Serializable {
+	private static final long serialVersionUID = -7491707524322400477L;
+
 	private ClockService.ClockType type;
 	private int localNodeId;
 	private int logical;
