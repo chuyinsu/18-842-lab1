@@ -1,9 +1,12 @@
 package app;
 
-import ipc.Message;
 import ipc.MessagePasser;
+import ipc.TimeStampedMessage;
 
 import java.util.Scanner;
+
+import clock.ClockService;
+import clock.TimeStamp;
 
 /**
  * This class demonstrates the communication infrastructure with MessagePasser
@@ -20,6 +23,7 @@ public class ControlPanel {
 	private static final String HELP_CMD = "help";
 	private static final String HELP_CONTENT = "send <process_name> <kind> <message>";
 	private static final String SEND_CMD = "send";
+	private static final String EVENT_CMD = "event";
 	private static final int SEND_NUM_PARAM = 4;
 	private static final String QUIT_CMD = "quit";
 
@@ -39,8 +43,10 @@ public class ControlPanel {
 	private class Receiver implements Runnable {
 		public void run() {
 			while (true) {
-				Message message = messagePasser.receive();
-				System.out.println("message delivered - " + message.toString());
+				TimeStampedMessage message = (TimeStampedMessage) (messagePasser
+						.receive());
+				System.out.println("message delivered to local node - "
+						+ message.toString());
 			}
 		}
 	}
@@ -58,6 +64,15 @@ public class ControlPanel {
 	public void startUserInterface(String configurationFileName,
 			String localName) {
 		messagePasser = new MessagePasser(configurationFileName, localName);
+		while (!messagePasser.parseConfigurationFinished()) {
+			continue;
+		}
+		if (messagePasser.getClockServiceType() != ClockService.ClockType.DEFAULT) {
+			ClockService.initialize(messagePasser.getNumOfNodes(),
+					messagePasser.getClockServiceType(),
+					messagePasser.getLocalNodeId());
+		}
+		messagePasser.initialize();
 
 		receiver = new Receiver();
 		receiverThread = new Thread(receiver);
@@ -73,12 +88,18 @@ public class ControlPanel {
 				String[] parsedLine = cmd.split("\\s+", SEND_NUM_PARAM);
 				if (parsedLine.length == SEND_NUM_PARAM
 						&& parsedLine[0].equals(SEND_CMD)) {
-					Message message = new Message(parsedLine[1], parsedLine[2],
-							parsedLine[3]);
-					messagePasser.send(message);
+					TimeStampedMessage message = new TimeStampedMessage(
+							parsedLine[1], parsedLine[2], parsedLine[3]);
+					TimeStamp ts = messagePasser.send(message);
+					System.out
+							.println("message put to send buffer, local time updated to: "
+									+ ts.toString());
 				} else {
 					System.out.println("invalid command");
 				}
+			} else if (cmd.equals(EVENT_CMD)) {
+				TimeStamp ts = ClockService.getInstance().updateLocalTime();
+				System.out.println("local time updated to: " + ts.toString());
 			} else if (cmd.equals(QUIT_CMD)) {
 				scanner.close();
 				System.exit(-1);

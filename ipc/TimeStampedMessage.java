@@ -6,10 +6,9 @@ public class TimeStampedMessage extends Message {
 	private static final long serialVersionUID = -5908777442179653889L;
 	private TimeStamp timeStamp;
 
-	public TimeStampedMessage(String dest, String kind, Object data,
-			TimeStamp timeStamp) {
+	public TimeStampedMessage(String dest, String kind, Object data) {
 		super(dest, kind, data);
-		this.timeStamp = timeStamp;
+		this.timeStamp = null;
 	}
 
 	public TimeStamp getTimeStamp() {
@@ -18,5 +17,13 @@ public class TimeStampedMessage extends Message {
 
 	public void setTimeStamp(TimeStamp timeStamp) {
 		this.timeStamp = timeStamp;
+	}
+
+	@Override
+	public String toString() {
+		return "[src] " + getSource() + " [dst] " + getDest() + " [kind] "
+				+ getKind() + " [seq] " + getSequenceNumber() + " [dup] "
+				+ (isDupe() ? "true" : "false") + " [time] "
+				+ timeStamp.toString() + " [data] " + getData().toString();
 	}
 }

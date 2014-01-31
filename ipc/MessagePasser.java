@@ -17,10 +17,14 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.yaml.snakeyaml.Yaml;
+
+import clock.ClockService;
+import clock.TimeStamp;
 
 /**
  * This class spawns a thread for each node to receive messages and create a
@@ -37,6 +41,9 @@ public class MessagePasser {
 	private static final String ITEM_CONFIGURATION = "configuration";
 	private static final String ITEM_SEND_RULES = "sendRules";
 	private static final String ITEM_RECEIVE_RULES = "receiveRules";
+	private static final String CLOCK_SERVICE_TYPE = "clockService";
+	private static final String CLOCK_SERVICE_LOGICAL = "logical";
+	private static final String CLOCK_SERVICE_VECTOR = "vector";
 	private static final String CONTACT_NAME = "name";
 	private static final String CONTACT_IP = "ip";
 	private static final String CONTACT_PORT = "port";
@@ -67,6 +74,9 @@ public class MessagePasser {
 	// maps from remote node names to their contact information (IP and port)
 	private HashMap<String, Contact> contactMap;
 
+	private ClockService.ClockType type;
+	private int localNodeId;
+
 	private ReentrantLock rulesLock;
 	private ArrayList<HashMap<String, Object>> sendRules;
 	private ArrayList<HashMap<String, Object>> receiveRules;
@@ -80,6 +90,8 @@ public class MessagePasser {
 	private Thread receiverThread;
 
 	private ServerSocket serverSocket;
+
+	private volatile boolean initialized;
 
 	/**
 	 * A private class to store remote node information.
@@ -107,14 +119,16 @@ public class MessagePasser {
 	 * 
 	 */
 	private class Watcher implements Runnable {
+		private volatile boolean configurationParsed;
 		private String ETag;
 		private String configurationFileURL;
 		private String configurationFileNameNew;
 		private HttpURLConnection connection;
 
 		public Watcher() {
+			this.configurationParsed = false;
 			this.ETag = "initial";
-			this.configurationFileURL = "https://dl.dropboxusercontent.com/s/tv38cb35b82t2mi/"
+			this.configurationFileURL = "https://dl.dropboxusercontent.com/s/cxk7aexjpnq2aor/"
 					+ configurationFileName + "?dl=1";
 			this.configurationFileNameNew = configurationFileName + ".new";
 			this.connection = null;
@@ -255,7 +269,7 @@ public class MessagePasser {
 			for (Map.Entry<String, ArrayList<HashMap<String, Object>>> entry : yamlMap
 					.entrySet()) {
 				if (entry.getKey().equals(ITEM_CONFIGURATION) && loadContacts) {
-					constructContactMap(entry.getValue());
+					localConfiguration(entry.getValue());
 				} else if (entry.getKey().equals(ITEM_SEND_RULES)) {
 					sendRules = entry.getValue();
 				} else if (entry.getKey().equals(ITEM_RECEIVE_RULES)) {
@@ -270,15 +284,56 @@ public class MessagePasser {
 			}
 		}
 
-		private void constructContactMap(
+		/**
+		 * Load the configuration part of the YAML file, will be called only
+		 * once upon starting.
+		 * 
+		 * @param configRules
+		 *            The configuration part parsed from the YAML file.
+		 */
+		private void localConfiguration(
 				ArrayList<HashMap<String, Object>> configRules) {
 			for (HashMap<String, Object> map : configRules) {
-				String name = (String) map.get(CONTACT_NAME);
-				String IP = (String) map.get(CONTACT_IP);
-				Integer port = (Integer) map.get(CONTACT_PORT);
-				Contact contact = new Contact(IP, (int) port);
-				contactMap.put(name, contact);
+				if (map.containsKey(CLOCK_SERVICE_TYPE)) {
+					String service = (String) map.get(CLOCK_SERVICE_TYPE);
+					if (service.equals(CLOCK_SERVICE_LOGICAL)) {
+						type = ClockService.ClockType.LOGICAL;
+						logger.info("clock service: logical");
+					} else if (service.equals(CLOCK_SERVICE_VECTOR)) {
+						type = ClockService.ClockType.VECTOR;
+						logger.info("clock service: vector");
+					} else {
+						logger.error("invalid clock service type");
+					}
+				} else {
+					String name = (String) map.get(CONTACT_NAME);
+					String IP = (String) map.get(CONTACT_IP);
+					Integer port = (Integer) map.get(CONTACT_PORT);
+					Contact contact = new Contact(IP, (int) port);
+					contactMap.put(name, contact);
+				}
 			}
+			if (!contactMap.containsKey(localName)) {
+				logger.error("local name " + localName
+						+ " does not exist in the config file");
+				configurationParsed = true;
+				return;
+			}
+			PriorityQueue<String> heap = new PriorityQueue<String>();
+			for (String s : contactMap.keySet()) {
+				heap.add(s);
+			}
+			while (!heap.isEmpty()) {
+				String name = heap.poll();
+				if (name.equals(localName)) {
+					break;
+				} else {
+					localNodeId++;
+				}
+			}
+			configurationParsed = true;
+			logger.info("local node ID: " + localNodeId);
+			logger.info("total number of nodes: " + contactMap.size());
 		}
 	}
 
@@ -297,7 +352,13 @@ public class MessagePasser {
 		}
 
 		public void run() {
+			while (!initialized) {
+				continue;
+			}
 			logger.info("sender thread started");
+			if (!contactMap.containsKey(localName)) {
+				return;
+			}
 			while (true) {
 				try {
 					Message message = sendBuffer.take();
@@ -613,12 +674,12 @@ public class MessagePasser {
 		}
 
 		public void run() {
+			while (!initialized) {
+				continue;
+			}
 			logger.info("receiver thread started");
 
-			// cannot listen if local name does not exist in configuration file
 			if (!contactMap.containsKey(localName)) {
-				logger.error("local name " + localName
-						+ " does not exist in the config file");
 				return;
 			}
 
@@ -652,6 +713,7 @@ public class MessagePasser {
 	}
 
 	public MessagePasser(String configurationFileName, String localName) {
+		this.initialized = false;
 		this.configurationFileName = configurationFileName;
 		this.localName = localName;
 		this.logger = new LogTool("ipc.log", MessagePasser.class.getName());
@@ -660,6 +722,8 @@ public class MessagePasser {
 		this.socketMap = new HashMap<String, Socket>();
 		this.seqNum = 1;
 		this.contactMap = new HashMap<String, Contact>();
+		this.type = ClockService.ClockType.DEFAULT;
+		this.localNodeId = 0;
 		this.rulesLock = new ReentrantLock();
 		this.watcher = new Watcher();
 		this.sender = new Sender();
@@ -722,13 +786,21 @@ public class MessagePasser {
 	 * 
 	 * @param message
 	 *            The message to send.
+	 * @return The updated local time stamp due to this sending event.
 	 */
-	public void send(Message message) {
+	public TimeStamp send(Message message) {
+		TimeStamp ts = null;
 		try {
+			if (type != ClockService.ClockType.DEFAULT
+					&& message instanceof TimeStampedMessage) {
+				ts = ClockService.getInstance().updateLocalTime();
+				((TimeStampedMessage) message).setTimeStamp(ts);
+			}
 			sendBuffer.put(message);
 		} catch (InterruptedException ex) {
 			logger.info("interrupted when sending message - " + ex.getMessage());
 		}
+		return ts;
 	}
 
 	/**
@@ -740,10 +812,36 @@ public class MessagePasser {
 		Message message = null;
 		try {
 			message = receiveBuffer.take();
+			if (type != ClockService.ClockType.DEFAULT
+					&& message instanceof TimeStampedMessage) {
+				TimeStamp ts = ClockService.getInstance().updateLocalTime(
+						((TimeStampedMessage) message).getTimeStamp());
+				((TimeStampedMessage) message).setTimeStamp(ts);
+			}
 		} catch (InterruptedException ex) {
 			logger.info("interrupted when receiving message - "
 					+ ex.getMessage());
 		}
 		return message;
+	}
+
+	public int getNumOfNodes() {
+		return contactMap.size();
+	}
+
+	public boolean parseConfigurationFinished() {
+		return watcher.configurationParsed;
+	}
+
+	public void initialize() {
+		this.initialized = true;
+	}
+
+	public ClockService.ClockType getClockServiceType() {
+		return type;
+	}
+
+	public int getLocalNodeId() {
+		return localNodeId;
 	}
 }
