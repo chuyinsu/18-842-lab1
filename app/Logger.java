@@ -1,6 +1,5 @@
 package app;
 
-import ipc.Message;
 import ipc.MessagePasser;
 import ipc.TimeStampedMessage;
 
@@ -9,30 +8,52 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Scanner;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.ReentrantLock;
 
 import clock.ClockService;
-
+import clock.TimeStamp;
 
 /**
- * This class demonstrates the centralized logging facility for
- * our distributed system
+ * This class demonstrates the centralized logging facility for our distributed
+ * system.
  * 
- * @author Yinsu Chu
  * @author Jason Xi
+ * @author Yinsu Chu
  * 
  */
 public class Logger {
-
 	private static final int NUM_CMD_ARG = 2;
 	private static final String USAGE = "usage: java -cp :snakeyaml-1.11.jar app/Logger <configuration_file_name> <log_name>";
 	private static final String HELP_CMD = "help";
-	private static final String HELP_CONTENT = "dump(type quit to exit)";
+	private static final String HELP_CONTENT = "dump (type quit to exit)";
 	private static final String DUMP_CMD = "dump";
 	private static final String QUIT_CMD = "quit";
+	private static final String EVENT_CMD = "event";
+	private static final String TIME_CMD = "time";
 	private static final String LOG_NAME = "logger.txt";
 
 	private MessagePasser messagePasser;
+
+	// store all the massages that received
+	private ArrayList<TimeStampedMessage> allMsg;
+	private ReentrantLock msgLock;
+
+	private class LoggerWorker implements Runnable {
+		public LoggerWorker() {
+			allMsg = new ArrayList<TimeStampedMessage>();
+			msgLock = new ReentrantLock();
+		}
+
+		public void run() {
+			while (true) {
+				TimeStampedMessage tsm = (TimeStampedMessage) messagePasser
+						.receive();
+				msgLock.lock();
+				allMsg.add(tsm);
+				msgLock.unlock();
+			}
+		}
+	}
 
 	/**
 	 * This method launches a simple command-line user interface to operate on
@@ -44,12 +65,9 @@ public class Logger {
 	 *            Name of the local node.
 	 * 
 	 */
-	public void startLogger(String configurationFileName,
-			String logName) {
-
-		messagePasser = new MessagePasser(configurationFileName, logName);
-
+	public void startLogger(String configurationFileName, String logName) {
 		FileWriter logWriter = null;
+		messagePasser = new MessagePasser(configurationFileName, logName);
 		while (!messagePasser.parseConfigurationFinished()) {
 			continue;
 		}
@@ -59,9 +77,10 @@ public class Logger {
 					messagePasser.getLocalNodeId());
 		}
 		messagePasser.initialize();
-		
-		// Store all the massages that received
-		ArrayList<TimeStampedMessage> allMsg = new ArrayList<TimeStampedMessage>();
+
+		LoggerWorker lw = new LoggerWorker();
+		Thread lwThread = new Thread(lw);
+		lwThread.start();
 
 		Scanner scanner = new Scanner(System.in);
 		while (true) {
@@ -70,39 +89,41 @@ public class Logger {
 			if (cmd.equals(HELP_CMD)) {
 				System.out.println(HELP_CONTENT);
 			} else if (cmd.startsWith(DUMP_CMD)) {
-				LinkedBlockingQueue<Message> buffer = messagePasser.getReceiveBuffer();
 				try {
 					logWriter = new FileWriter(LOG_NAME);
-					while(buffer.size() > 0) {
-						TimeStampedMessage tmp = (TimeStampedMessage) messagePasser.receive();
-						allMsg.add(tmp);
-					}
-					// Sort all the messages
-					Collections.sort(allMsg);
-					if(allMsg.size() == 0)
+					msgLock.lock();
+					if (allMsg.size() == 0) {
+						msgLock.unlock();
 						continue;
+					}
+					Collections.sort(allMsg);
 					TimeStampedMessage pre = allMsg.get(0);
 					logWriter.write(pre.toString());
-					for(int i = 1; i < allMsg.size(); ++i) {
+					for (int i = 1; i < allMsg.size(); ++i) {
 						TimeStampedMessage cur = allMsg.get(i);
-						if(cur.compareTo(pre) == 0) {
-							logWriter.write("\t\t" + cur.toString() );
-						}
-						else if(cur.compareTo(pre) != 0) {
-							logWriter.write('\n' + cur.toString() );
+						if (cur.compareTo(pre) == 0) {
+							logWriter.write("\t\t" + cur.toString());
+						} else if (cur.compareTo(pre) != 0) {
+							logWriter.write('\n' + cur.toString());
 						}
 						pre = cur;
 					}
-					logWriter.close();	
-				} catch(IOException ioe) {
+					logWriter.close();
+					msgLock.unlock();
+				} catch (IOException ioe) {
 					ioe.printStackTrace();
 				}
+			} else if (cmd.equals(EVENT_CMD)) {
+				TimeStamp ts = ClockService.getInstance().updateLocalTime();
+				System.out.println("local time updated to: " + ts.toString());
+			} else if (cmd.equals(TIME_CMD)) {
+				TimeStamp ts = ClockService.getInstance().getLocalTime();
+				System.out.println("local time: " + ts.toString());
 			} else if (cmd.equals(QUIT_CMD)) {
 				scanner.close();
 				System.exit(-1);
 			}
 		}
-
 	}
 
 	public static void main(String[] args) {
@@ -113,6 +134,4 @@ public class Logger {
 		Logger log = new Logger();
 		log.startLogger(args[0], args[1]);
 	}
-
-
 }
