@@ -67,12 +67,16 @@ public abstract class ClockService {
 		localTimeLock.unlock();
 	}
 
-	public TimeStamp getLocalTime() {
+	public TimeStamp getLocalTimeCopy() {
 		TimeStamp timeStamp = null;
 		localTimeLock.lock();
 		timeStamp = new TimeStamp(localTime);
 		localTimeLock.unlock();
 		return timeStamp;
+	}
+
+	public TimeStamp getLocalTimeRef() {
+		return localTime;
 	}
 
 	public static ClockService getInstance() {

@@ -17,10 +17,12 @@ public class Logical extends ClockService {
 	public TimeStamp updateLocalTime(TimeStamp newTime) {
 		TimeStamp timeStamp = null;
 		getLocalTimeLock();
-		getLocalTime().setLogical(
-				(Math.max(getLocalTime().getLogical(), newTime.getLogical())));
-		getLocalTime().advance();
-		timeStamp = new TimeStamp(getLocalTime());
+		getLocalTimeRef()
+				.setLogical(
+						(Math.max(getLocalTimeRef().getLogical(),
+								newTime.getLogical())));
+		getLocalTimeRef().advance();
+		timeStamp = new TimeStamp(getLocalTimeRef());
 		releaseLocalTimeLock();
 		return timeStamp;
 	}

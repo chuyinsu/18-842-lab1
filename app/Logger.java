@@ -117,7 +117,7 @@ public class Logger {
 				TimeStamp ts = ClockService.getInstance().updateLocalTime();
 				System.out.println("local time updated to: " + ts.toString());
 			} else if (cmd.equals(TIME_CMD)) {
-				TimeStamp ts = ClockService.getInstance().getLocalTime();
+				TimeStamp ts = ClockService.getInstance().getLocalTimeCopy();
 				System.out.println("local time: " + ts.toString());
 			} else if (cmd.equals(QUIT_CMD)) {
 				scanner.close();

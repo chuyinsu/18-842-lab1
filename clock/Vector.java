@@ -10,7 +10,7 @@ public class Vector extends ClockService {
 	public TimeStamp updateLocalTime(TimeStamp newTime) {
 		TimeStamp timeStamp = null;
 		getLocalTimeLock();
-		TimeStamp localTime = getLocalTime();
+		TimeStamp localTime = getLocalTimeRef();
 		for (int i = 0; i < localTime.getVector().length; i++) {
 			(localTime.getVector())[i] = Math.max((localTime.getVector())[i],
 					(newTime.getVector())[i]);
