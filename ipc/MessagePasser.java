@@ -108,6 +108,12 @@ public class MessagePasser {
 			this.IP = IP;
 			this.port = port;
 		}
+		public String getIP() {
+			return this.IP;
+		}
+		public int getPort() {
+			return this.port;
+		}
 	}
 
 	/**
@@ -844,4 +850,9 @@ public class MessagePasser {
 	public int getLocalNodeId() {
 		return localNodeId;
 	}
+	
+	public LinkedBlockingQueue<Message> getReceiveBuffer() {
+		return this.receiveBuffer;
+	}
+
 }
