@@ -412,7 +412,7 @@ public class MessagePasser {
 					} else if (action.equals(ACTION_DUPLICATE)) {
 						logger.info("match duplicate rule when sending, message "
 								+ message.toString() + "duped");
-						Message dup = new Message(null, null, null);
+						Message dup = new TimeStampedMessage(null, null, null);
 						dup.setDest(dest);
 						dup.setKind(message.getKind());
 						dup.setData(message.getData());
@@ -587,7 +587,8 @@ public class MessagePasser {
 						} else if (action.equals(ACTION_DUPLICATE)) {
 							logger.info("match duplicate rule when receiving, message "
 									+ message.toString() + "duped");
-							Message dup = new Message(null, null, null);
+							Message dup = new TimeStampedMessage(null, null,
+									null);
 							dup.setDest(new String(message.getDest()));
 							dup.setKind(new String(message.getKind()));
 							dup.setData(message.getData());
